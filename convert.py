@@ -25,7 +25,7 @@ def lmCheck(db_name):
     print 'Total features: ', count
 
 # Convert dataset
-def lmSave2txt(db_name, outputfile):
+def lmSave2txt(db_name, outputfile, file_type = 'hdf5', batch = 0):
     img_db = lmdb.open(db_name)
     txn = img_db.begin()
     cursor = txn.cursor()
@@ -33,15 +33,35 @@ def lmSave2txt(db_name, outputfile):
 
     datum = caffe_pb2.Datum()
     #count = 0
-    with open(outputfile, 'w') as writer:
-        writer.truncate()
-        for key, value in cursor:
-            datum.ParseFromString(value)
-            data = caffe.io.datum_to_array(datum)
-            data = np.reshape(data, (1, np.product(data.shape)))[0]
-            np.savetxt(writer, data.reshape(1,-1), fmt='%.8g')
-            #count = count + 1
-        #print count
+    if file_type == 'text':
+        with open(outputfile, 'w') as writer:
+            writer.truncate()
+            for key, value in cursor:
+                datum.ParseFromString(value)
+                data = caffe.io.datum_to_array(datum)
+                data = np.reshape(data, (1, np.product(data.shape)))[0]
+                np.savetxt(writer, data.reshape(1,-1), fmt='%.8g')
+                #count = count + 1
+            #print count
+        elif file_type == 'hdf5':
+            with h5py.File(outputfile, 'w') as hf:
+                data_matrix = []
+                count = 0;
+                for key, val in db.RangeIter():
+                    datum.ParseFromString(value)
+                    data = caffe.io.datum_to_array(datum)
+                    data = np.reshape(data, (1, np.product(data.shape)))[0]
+                    data_matrix.append(data)
+                    if batch == len(data_matrix):
+                        # Index starts from 0
+                        print ('creating dataset_' + str(count))
+                        hf.create_dataset('dataset_' + str(count), data=np.array(data_matrix))
+                        count += 1
+                        data_matrix = []
+                if batch == 0:
+                    print ('creating dataset')
+                    hf.create_dataset('dataset', data=np.array(data_matrix))
+                #print count
 
 # Check dataset information before checking
 def levCheck(db_name):
@@ -78,10 +98,12 @@ def levSave2txt(db_name, outputfile, file_type = 'hdf5', batch = 0):
                 data_matrix.append(data)
                 if batch == len(data_matrix):
                     # Index starts from 0
+                    print ('creating dataset_' + str(count))
                     hf.create_dataset('dataset_' + str(count), data=np.array(data_matrix))
                     count += 1
                     data_matrix = []
             if batch == 0:
+                print ('creating dataset')
                 hf.create_dataset('dataset', data=np.array(data_matrix))
             #print count
 
@@ -148,7 +170,7 @@ def main(argv):
         if str.upper(mode) == "CHECK":
             lmCheck(inputfile)
         if str.upper(mode) == "CONVERT":
-            lmSave2txt(inputfile, outputfile)
+            lmSave2txt(inputfile, outputfile,  file_type, batch)
 
 if __name__ == '__main__':
     print '\n\n'
