@@ -52,7 +52,7 @@ def levCheck(db_name):
     print 'Total features: ', count
 
 # Convert dataset
-def levSave2txt(db_name, outputfile, file_type):
+def levSave2txt(db_name, outputfile, file_type = 'hdf5', batch = 0):
     db = leveldb.LevelDB(db_name)
     count = 0
     
@@ -70,29 +70,37 @@ def levSave2txt(db_name, outputfile, file_type):
     elif file_type == 'hdf5':
         with h5py.File(outputfile, 'w') as hf:
             data_matrix = []
+            count = 0;
             for key, val in db.RangeIter():
-                #count = count + 1
-                #print count 
                 datum = caffe.io.caffe_pb2.Datum() 
                 datum.ParseFromString(val) 
                 data = caffe.io.datum_to_array(datum)
                 data_matrix.append(data)
-            data_matrix = np.array(data_matrix)
-            hf.create_dataset('dataset',data=data_matrix)
+                if batch == len(data_matrix):
+                    # Index starts from 0
+                    hf.create_dataset('dataset_' + str(count), data=np.array(data_matrix))
+                    count += 1
+                    data_matrix = []
+            if batch == 0:
+                hf.create_dataset('dataset', data=np.array(data_matrix))
             #print count
+
+
 def main(argv):
     inputfile = ''
     outputfile = ''
 
     try:
-        opts, args = getopt.getopt(argv,"hi:o:m:t:w:",["ifile=","ofile="])
+        opts, args = getopt.getopt(argv,"hi:o:m:t:w:b:",["ifile=","ofile="])
     except getopt.GetoptError:
         print '======================================================================================='
         print 'Usage:'
-        print 'convert.py -i <inputfile> -o <outputfile> -t <dataset type> -m <mode> -w <file type>'
+        print """convert.py -i <inputfile> -o <outputfile> -t <dataset type> -m <mode> 
+                -w <file type> -b <batch size>"""
         print 'mode -- check, convert'
         print 'dataset type -- leveldb, lmdb'
         print 'file type -- text, hdf5'
+        print 'batch size -- Any number bigger than zero, the defaut is same as the dataset'
         print '======================================================================================='
         sys.exit(2)
 
@@ -101,10 +109,12 @@ def main(argv):
         if opt == '-h':
             print '======================================================================================='
             print 'Usage:'
-            print 'convert.py -i <inputfile> -o <outputfile> -t <dataset type> -m <mode> -w <file type>'
+            print """convert.py -i <inputfile> -o <outputfile> -t <dataset type> -m <mode>
+                 -w <file type> -b <batch size>"""
             print 'mode -- check, convert'
             print 'dataset type -- leveldb, lmdb'
             print 'file type -- text, hdf5'
+            print 'batch size -- Any number bigger than zero, the defaut is same as the dataset'
             print '======================================================================================='
             sys.exit()
         elif opt in ("-i"):
@@ -121,14 +131,18 @@ def main(argv):
             print 'Function mode is', mode
         elif opt in ("-w"):
             file_type = arg
-            print 'Function mode is', file_type
+            print 'File type is', file_type
+        elif opt in ("-b"):
+            batch = int(arg)
+            print 'Batch size is', batch
+
     print '\n'
 
     if str.upper(dataset_type) == "LEVELDB":
         if str.upper(mode) == "CHECK": 
             levCheck(inputfile)
         elif str.upper(mode) == "CONVERT":
-            levSave2txt(inputfile, outputfile, file_type)
+            levSave2txt(inputfile, outputfile, file_type, batch)
 
     elif str.upper(dataset_type) == "LMDB":
         if str.upper(mode) == "CHECK":
