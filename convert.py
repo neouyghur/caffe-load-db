@@ -41,27 +41,30 @@ def lmSave2txt(db_name, outputfile, file_type = 'hdf5', batch = 0):
                 data = caffe.io.datum_to_array(datum)
                 data = np.reshape(data, (1, np.product(data.shape)))[0]
                 np.savetxt(writer, data.reshape(1,-1), fmt='%.8g')
-                #count = count + 1
-            #print count
-        elif file_type == 'hdf5':
-            with h5py.File(outputfile, 'w') as hf:
-                data_matrix = []
-                count = 0;
-                for key, val in db.RangeIter():
-                    datum.ParseFromString(value)
-                    data = caffe.io.datum_to_array(datum)
-                    data = np.reshape(data, (1, np.product(data.shape)))[0]
-                    data_matrix.append(data)
-                    if batch == len(data_matrix):
-                        # Index starts from 0
-                        print ('creating dataset_' + str(count))
-                        hf.create_dataset('dataset_' + str(count), data=np.array(data_matrix))
-                        count += 1
-                        data_matrix = []
-                if batch == 0:
-                    print ('creating dataset')
-                    hf.create_dataset('dataset', data=np.array(data_matrix))
-                #print count
+    elif file_type == 'hdf5':
+        with h5py.File(outputfile, 'w') as hf:
+            data_matrix = []
+            count = 0;
+            for key, val in db.RangeIter():
+                datum.ParseFromString(value)
+                data = caffe.io.datum_to_array(datum)
+                data = np.reshape(data, (1, np.product(data.shape)))[0]
+                data_matrix.append(data)
+                print len(data_matrix)
+                if batch == len(data_matrix):
+                    # Index starts from 0
+                    print ('creating dataset_' + str(count))
+                    hf.create_dataset('dataset_' + str(count), data=np.array(data_matrix))
+                    count += 1
+                    data_matrix = []
+
+            if len(data_matrix) > 0:
+                print ('creating dataset_' + str(count))
+                hf.create_dataset('dataset_' + str(count), data=np.array(data_matrix))
+                del data_matrix
+            elif batch == 0:
+                print ('creating dataset')
+                hf.create_dataset('dataset', data=np.array(data_matrix))
 
 # Check dataset information before checking
 def levCheck(db_name):
@@ -80,8 +83,6 @@ def levSave2txt(db_name, outputfile, file_type = 'hdf5', batch = 0):
         with open(outputfile, 'w') as writer:
             writer.truncate()
             for key, val in db.RangeIter():
-                #count = count + 1
-                #print count 
                 datum = caffe.io.caffe_pb2.Datum() 
                 datum.ParseFromString(val) 
                 data = caffe.io.datum_to_array(datum)
@@ -96,13 +97,19 @@ def levSave2txt(db_name, outputfile, file_type = 'hdf5', batch = 0):
                 datum.ParseFromString(val) 
                 data = caffe.io.datum_to_array(datum)
                 data_matrix.append(data)
+                # print len(data_matrix)
                 if batch == len(data_matrix):
                     # Index starts from 0
                     print ('creating dataset_' + str(count))
                     hf.create_dataset('dataset_' + str(count), data=np.array(data_matrix))
                     count += 1
                     data_matrix = []
-            if batch == 0:
+                    
+            if len(data_matrix) > 0:
+                print ('creating dataset_' + str(count))
+                hf.create_dataset('dataset_' + str(count), data=np.array(data_matrix))
+                del data_matrix
+            elif batch == 0:
                 print ('creating dataset')
                 hf.create_dataset('dataset', data=np.array(data_matrix))
             #print count
