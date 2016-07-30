@@ -48,8 +48,8 @@ def lmSave2txt(db_name, outputfile, file_type = 'hdf5', batch = 0):
             for key, val in db.RangeIter():
                 datum.ParseFromString(value)
                 data = caffe.io.datum_to_array(datum)
-                data = np.reshape(data, (1, np.product(data.shape)))[0]
-                data_matrix.append(data)
+                # data = np.reshape(data, (1, np.product(data.shape)))[0]
+                data_matrix.append(data.flatten())
                 print len(data_matrix)
                 if batch == len(data_matrix):
                     # Index starts from 0
@@ -96,7 +96,7 @@ def levSave2txt(db_name, outputfile, file_type = 'hdf5', batch = 0):
                 datum = caffe.io.caffe_pb2.Datum() 
                 datum.ParseFromString(val) 
                 data = caffe.io.datum_to_array(datum)
-                data_matrix.append(data)
+                data_matrix.append(data.flatten())
                 # print len(data_matrix)
                 if batch == len(data_matrix):
                     # Index starts from 0
@@ -113,7 +113,6 @@ def levSave2txt(db_name, outputfile, file_type = 'hdf5', batch = 0):
                 print ('creating dataset')
                 hf.create_dataset('dataset', data=np.array(data_matrix))
             #print count
-
 
 def main(argv):
     inputfile = ''
